@@ -51,3 +51,19 @@ Ayrıntı: aşağıdaki "Kurulum" bölümü (deploy adımları eklenecek).
 İkisi de venv kurar, bağımlılıkları yükler, `gw_config.json` oluşturur. Sonra
 `gw_config.json`'u doldurup (public doğrulama anahtarı + operator SSH anahtarı + VPS
 adresleri) başlatırsın. Port varsayılan **8095**.
+
+## 🧪 Deneme (tek başına, demo modu)
+Gerçek VPS/Hermes olmadan, akışı (Erişim İste → Onayla → süre → geri sayım barı → sohbet) denemek için:
+```
+# kurulum (bir kez)
+Linux:   chmod +x kur.sh calistir.sh && ./kur.sh
+Windows: ./kur.ps1
+# demo anahtar + config üret (throwaway, gerçek sır değil)
+./venv/bin/python demo_setup.py        # Windows: .\venv\Scripts\python demo_setup.py
+# başlat
+./calistir.sh                          # Windows: calistir.bat
+```
+Sonra tarayıcıda:
+- **`http://127.0.0.1:8095/`** → misafir: adını yaz, **Erişim İste**
+- **`http://127.0.0.1:8095/admin`** → sahip: talebi gör, **Onayla** + süre seç → **renkli geri sayım barı** + misafir sohbete düşer
+> Demo'da Hermes cevapları kannedtir (gerçek Hermes canlı bağlantıda). Misafir modu korumaları (Mert/sistem bilgisi vermez) demoda da aktiftir.

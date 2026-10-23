@@ -9,3 +9,5 @@ id_*
 venv/
 __pycache__/
 *.pyc
+issuer_priv.b64
+admin_token*

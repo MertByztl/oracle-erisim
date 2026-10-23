@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geçici Erişim — Onay</title>
+<style>
+  :root{--bg:#0b1220;--panel:#121b2e;--panel2:#0f1829;--line:#243150;--fg:#e7eefc;--dim:#8ba0c4;--accent:#2f81f7;--off:#ff6b6b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:680px;margin:0 auto}
+  h1{font-size:18px;margin:4px 0 14px}
+  h2{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+  .req .name{font-weight:700;font-size:15px}
+  .req .info{color:var(--dim);font-size:12px;margin-top:3px;word-break:break-word}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{border:0;border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
+  button.ok{background:var(--accent);color:#fff;border:0}
+  button.red{background:#3a1b22;color:#ffb4b4;border:1px solid #5a2730}
+  .dur{display:none;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .empty{color:var(--dim);font-size:13px;padding:8px 0}
+  /* geri sayim bari */
+  .grant{margin:10px 0}
+  .grant .top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}
+  .grant .top b{font-weight:700}
+  .track{height:14px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .fill{height:100%;width:100%;border-radius:999px;transition:width 1s linear, background .6s}
+</style>
+</head>
+<body>
+<h1>🔑 Geçici Erişim — Onay Paneli <span style="font-size:12px;color:var(--dim)">(demo)</span></h1>
+
+<h2>Bekleyen Talepler</h2>
+<div id="reqs"><div class="empty">talep bekleniyor…</div></div>
+
+<h2>Aktif Erişimler</h2>
+<div id="grants"><div class="empty">aktif erişim yok</div></div>
+
+<script>
+const API = location.origin;
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function j(u,o){ const r=await fetch(u,o); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||("HTTP "+r.status)); return r.json(); }
+function ago(ts){ const d=Date.now()/1000-ts; if(d<60)return (d|0)+" sn önce"; if(d<3600)return (d/60|0)+" dk önce"; return (d/3600|0)+" saat önce"; }
+function fmt(s){ s=Math.max(0,s|0); const h=s/3600|0,m=(s%3600)/60|0,x=s%60; return (h?h+"s ":"")+(m<10&&h?"0":"")+m+"dk "+(x<10?"0":"")+x+"sn"; }
+
+async function approve(rid, hours){ try{ await j(API+"/api/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request_id:rid,hours})}); loadReqs(); loadGrants(); }catch(e){ alert(e.message); } }
+async function deny(rid){ try{ await j(API+"/api/deny",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request_id:rid})}); loadReqs(); }catch(e){} }
+
+async function loadReqs(){
+  try{
+    const d = await j(API+"/api/requests");
+    const box = $("#reqs");
+    if(!d.pending.length){ box.innerHTML='<div class="empty">bekleyen talep yok</div>'; return; }
+    box.innerHTML = d.pending.map(r=>`
+      <div class="card req">
+        <div class="name">👤 ${esc(r.name)}</div>
+        <div class="info">IP: ${esc(r.ip)} · ${ago(r.ts)}<br>Cihaz: ${esc(r.ua)}</div>
+        <div class="acts">
+          <button class="ok" onclick="document.getElementById('d_${r.id}').style.display='flex';this.style.display='none'">✓ Onayla</button>
+          <button class="red" onclick="deny('${r.id}')">✕ Reddet</button>
+        </div>
+        <div class="dur" id="d_${r.id}">
+          <span style="color:var(--dim);font-size:13px;align-self:center">Süre:</span>
+          <button onclick="approve('${r.id}',1)">1 saat</button>
+          <button onclick="approve('${r.id}',6)">6 saat</button>
+          <button onclick="approve('${r.id}',24)">24 saat</button>
+          <button onclick="approve('${r.id}',0.083)">5 dk</button>
+        </div>
+      </div>`).join("");
+  }catch(e){}
+}
+
+async function loadGrants(){
+  try{
+    const d = await j(API+"/api/grants");
+    const box = $("#grants");
+    if(!d.grants.length){ box.innerHTML='<div class="empty">aktif erişim yok</div>'; return; }
+    box.innerHTML = d.grants.map((g,i)=>`
+      <div class="grant" data-kalan="${g.kalan_sn}" data-total="${g.total_sn}">
+        <div class="top"><b>👤 ${esc(g.name)}</b><span class="kln">${fmt(g.kalan_sn)}</span></div>
+        <div class="track"><div class="fill"></div></div>
+      </div>`).join("");
+    paint();
+  }catch(e){}
+}
+
+function colorFor(frac){ return frac>0.5?"#35d07f":frac>0.25?"#e6c84b":frac>0.1?"#ef8a3c":"#ff5b5b"; }
+function paint(){
+  document.querySelectorAll(".grant").forEach(el=>{
+    let kalan=+el.dataset.kalan, total=+el.dataset.total;
+    const frac=Math.max(0,Math.min(1,kalan/total));
+    const fill=el.querySelector(".fill");
+    fill.style.width=(frac*100)+"%"; fill.style.background=colorFor(frac);
+    el.querySelector(".kln").textContent=fmt(kalan);
+  });
+}
+// her saniye yerelde azalt (ag'a gitmeden akici); 10 sn'de bir sunucudan tazele
+setInterval(()=>{ document.querySelectorAll(".grant").forEach(el=>{ el.dataset.kalan=Math.max(0,(+el.dataset.kalan)-1); }); paint(); },1000);
+setInterval(loadReqs,3000);
+setInterval(loadGrants,10000);
+loadReqs(); loadGrants();
+</script>
+</body>
+</html>
