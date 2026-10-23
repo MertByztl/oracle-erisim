@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geçici Erişim</title>
+<style>
+  :root{--bg:#0b1220;--panel:#121b2e;--panel2:#0f1829;--line:#243150;--fg:#e7eefc;--dim:#8ba0c4;--ok:#35d07f;--off:#ff6b6b;--accent:#2f81f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:680px;margin:0 auto}
+  h1{font-size:19px;margin:4px 0 2px;display:flex;align-items:center;gap:8px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+  .chip{display:inline-block;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px}
+  .chip.warn{border-color:#8a5a00;color:#ffd27a}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px}
+  .row{display:flex;align-items:center;gap:8px;padding:7px 0;flex-wrap:wrap}
+  .k{min-width:120px}
+  .pill{font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px}
+  .pill.on{background:rgba(53,208,127,.15);color:var(--ok)}
+  .pill.off{background:rgba(255,107,107,.15);color:var(--off)}
+  .btn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font-size:14px;cursor:pointer}
+  .btn:hover{border-color:var(--accent)}
+  .btn.red{color:#ffb4b4;border-color:#5a2730}
+  .btn:disabled{opacity:.5;cursor:default}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:8px 0 0}
+  .big{font-size:26px;font-weight:800}
+  .mut{color:var(--dim);font-size:12px}
+  #gate{text-align:center;padding:40px 10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<h1>🔑 Geçici Erişim</h1>
+<div class="sub" id="who">yükleniyor…</div>
+
+<div id="gate" style="display:none">
+  <div class="big">⛔</div>
+  <p>Bu panel yalnızca <b>geçerli bir geçici link</b> ile çalışır.<br>
+  Link biçimi: <code>…/#t=&lt;token&gt;</code> — süresi dolmuşsa yenisini iste.</p>
+</div>
+
+<div id="app" style="display:none">
+  <div class="card">
+    <div class="row"><span class="k">Kalan süre</span>
+      <span class="big" id="kalan">—</span></div>
+    <div class="mut">Süre dolunca erişim otomatik kapanır.</div>
+  </div>
+
+  <div class="card">
+    <h2>Sunucu Durumu</h2>
+    <div id="status"><span class="mut">durum alınıyor…</span></div>
+  </div>
+
+  <div class="card" id="opcard" style="display:none">
+    <h2>İşlemler (yetkin kadarı)</h2>
+    <div class="acts" id="ops"></div>
+    <pre id="out" style="display:none"></pre>
+  </div>
+</div>
+
+<script>
+const API = location.origin;              // gateway kendisi serve ediyor
+const TOKEN = (location.hash.match(/t=([^&]+)/)||[])[1] || "";
+const H = {headers:{Authorization:"Bearer "+TOKEN}};
+const $ = s => document.querySelector(s);
+let EXP = 0;
+
+const ACTS = {
+  hp_hybrid_start:["🪤 Hibrit başlat",0], hp_hybrid_stop:["🪤 Hibrit durdur",1],
+  hp_iot_start:["📹 IoT başlat",0], hp_iot_stop:["📹 IoT durdur",1],
+  vpn_up:["🔐 VPN aç",0], vpn_down:["🔐 VPN kapat",1],
+  vpn_direct:["➡️ Direct",0], vpn_tor:["🧅 Tor",0], vpn_newip:["🔄 Yeni IP",0], vpn_exitip:["🌍 Çıkış IP",0],
+  doctor_status:["🩺 Doktor durum",0], doctor_restart:["♻️ Köprü yeniden başlat",1],
+};
+
+async function j(u,o){ const r=await fetch(u,o); if(!r.ok){throw new Error((await r.json().catch(()=>({}))).detail||("HTTP "+r.status));} return r.json(); }
+const esc = s => String(s??"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function fmt(s){ s=Math.max(0,s|0); const h=s/3600|0,m=(s%3600)/60|0,x=s%60; return (h?h+"s ":"")+m+"dk "+x+"sn"; }
+function tick(){ const k=Math.max(0,EXP-Date.now()/1000|0); $("#kalan").textContent=fmt(k);
+  if(k<=0){ $("#kalan").textContent="süre doldu"; document.querySelectorAll(".btn").forEach(b=>b.disabled=true); } }
+
+async function boot(){
+  if(!TOKEN){ $("#who").textContent=""; $("#gate").style.display="block"; return; }
+  try{
+    const me = await j(API+"/api/me", H);
+    EXP = me.exp;
+    $("#who").innerHTML = `Merhaba <b>${esc(me.name)}</b> · <span class="chip">operatör yetkisi</span>`;
+    $("#app").style.display="block";
+    setInterval(tick,1000); tick();
+    renderOps(me.scope||[]);
+    loadStatus();
+  }catch(e){ $("#who").textContent=""; $("#gate").style.display="block"; }
+}
+
+function renderOps(scope){
+  const host=$("#ops"); host.innerHTML="";
+  let any=false;
+  for(const a of scope){ if(!ACTS[a]) continue; any=true;
+    const [label,danger]=ACTS[a];
+    const b=document.createElement("button");
+    b.className="btn"+(danger?" red":""); b.textContent=label;
+    b.onclick=()=>runOp(a,b);
+    host.appendChild(b);
+  }
+  if(any) $("#opcard").style.display="block";
+}
+
+async function loadStatus(){
+  try{
+    const d = await j(API+"/api/status", H);
+    const names={honeypot:"🍯 Honeypot",vpn:"🔐 VPN",hermes:"🤖 Hermes"};
+    let html="";
+    for(const [vid,r] of Object.entries(d.vps)){
+      let detail="—";
+      try{ const o=JSON.parse(r.out); detail=Object.entries(o).map(([k,v])=>`${k}:${v}`).join(" · "); }catch(e){ detail=esc((r.out||"").slice(0,80)); }
+      const up=r.ok;
+      html+=`<div class="row"><span class="k">${names[vid]||vid}</span>
+        <span class="pill ${up?'on':'off'}">${up?'ulaşıldı':'yok'}</span>
+        <span class="mut" style="flex:1">${esc(detail)}</span></div>`;
+    }
+    $("#status").innerHTML=html||"<span class='mut'>veri yok</span>";
+  }catch(e){ $("#status").innerHTML=`<span class="mut">durum alınamadı: ${esc(e.message)}</span>`; }
+}
+
+async function runOp(a,btn){
+  const out=$("#out"); const t=btn.textContent; btn.disabled=true; btn.textContent="…";
+  out.style.display="block"; out.textContent="çalışıyor…";
+  try{
+    const r = await j(API+"/api/op/"+a, {method:"POST", ...H});
+    out.textContent=(r.ok?"✓ ":"✗ ")+(r.out||JSON.stringify(r));
+    loadStatus();
+  }catch(e){ out.textContent="hata: "+e.message; }
+  btn.disabled=false; btn.textContent=t;
+}
+
+boot();
+</script>
+</body>
+</html>

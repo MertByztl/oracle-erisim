@@ -1,0 +1,11 @@
+# SIR ASLA GIRMEZ — public repo
+gw_config.json
+*.key
+*.pem
+id_*
+!*.pub
+*token*
+.env
+venv/
+__pycache__/
+*.pyc

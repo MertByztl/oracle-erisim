@@ -1,0 +1,11 @@
+{
+  "verify_pubkey_b64": "ED25519_PUBLIC_ANAHTAR_BASE64_BURAYA",
+  "operator_key": "/home/ubuntu/.ssh/operator_key",
+  "ssh_port": 62222,
+  "ssh_user": "ubuntu",
+  "vps": [
+    {"id": "honeypot", "host": "152.70.21.217",  "role": "honeypot"},
+    {"id": "vpn",      "host": "152.70.184.175", "role": "vpn"},
+    {"id": "hermes",   "host": "92.5.157.28",    "role": "hermes"}
+  ]
+}
