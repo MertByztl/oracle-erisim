@@ -4,8 +4,8 @@
   "ssh_port": 62222,
   "ssh_user": "ubuntu",
   "vps": [
-    {"id": "honeypot", "host": "152.70.21.217",  "role": "honeypot"},
-    {"id": "vpn",      "host": "152.70.184.175", "role": "vpn"},
-    {"id": "hermes",   "host": "92.5.157.28",    "role": "hermes"}
+    {"id": "honeypot", "host": "SUNUCU_1_IP", "role": "honeypot"},
+    {"id": "vpn",      "host": "SUNUCU_2_IP", "role": "vpn"},
+    {"id": "hermes",   "host": "SUNUCU_3_IP", "role": "hermes"}
   ]
 }
