@@ -40,3 +40,14 @@ Ayrıntı: aşağıdaki "Kurulum" bölümü (deploy adımları eklenecek).
 
 > Not: İmza anahtarının **özel** yarısı yalnızca ana panelde (private repo) üretilir ve
 > saklanır. Bu repo'ya ne özel anahtar ne token ne parola girer.
+
+## Kurulum (yalnızca GATEWAY'i çalıştıracaklar için)
+> Geçici erişen **arkadaş hiçbir şey kurmaz** — sadece linki tarayıcıda açar.
+> Aşağısı, gateway'i bir sunucuda (veya kendi makinende) çalıştıracak kişi içindir.
+
+**Linux:**  `chmod +x kur.sh calistir.sh && ./kur.sh`  → sonra `./calistir.sh`
+**Windows:**  `./kur.ps1`  → sonra `./calistir.bat`
+
+İkisi de venv kurar, bağımlılıkları yükler, `gw_config.json` oluşturur. Sonra
+`gw_config.json`'u doldurup (public doğrulama anahtarı + operator SSH anahtarı + VPS
+adresleri) başlatırsın. Port varsayılan **8095**.
